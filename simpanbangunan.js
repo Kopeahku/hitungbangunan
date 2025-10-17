@@ -2,7 +2,7 @@ const inputs = document.querySelectorAll("#formInput input, #formInput select");
 const calculateButtonTanahUrug = document.querySelector("#hitungMaterial");
 const kebTanahUrug = document.querySelector("#kebTanahUrug");
 const tableTanahUrug = document.querySelector("#tableTanahUrug");
-import inputValid from "https://sipilku.vercel.app/JS/utilities/utilittiesOrigin.js";
+import inputValid from "https://rawcdn.githack.com/Kopeahku/hitungbangunan/8dd64d3dfe1bb9f452b6e5c36ca14f5e9a719d66/exsporbangunan.js";
 import Rumus from "https://sipilku.vercel.app/JS/rumus/rumusDasar.js";
 const form = document.querySelector("#formInput");
 const storageKey = "TANAHURUG_KEY";
@@ -84,5 +84,6 @@ function getVolume() {
     return;
   }
 }
+
 
 getVolume();
