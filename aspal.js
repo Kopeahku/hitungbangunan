@@ -138,18 +138,20 @@ function hitungBiayaAspal() {
 // -----------------------------------------------------------------
 // FUNGSI PDF (Tidak ada perubahan, tetapi harus disertakan)
 // -----------------------------------------------------------------
+// ... (Bagian atas fungsi generatePDF() yang membuat konten dan canvas tetap sama) ...
+
 function generatePDF() {
     if (!hasilPerhitunganAspal) return;
 
-    // 1. Tentukan Objek jsPDF
-    // Gunakan window.jspdf.jsPDF (UMD) sebagai default, atau fallback ke window.jsPDF (Legacy)
+    // 1. Tentukan Objek jsPDF (menggunakan konstruktor yang paling andal)
     const JsPdfConstructor = window.jspdf && window.jspdf.jsPDF ? window.jspdf.jsPDF : window.jsPDF;
     
     if (typeof JsPdfConstructor === 'undefined') {
-        alert("Library PDF (jsPDF) tidak ditemukan. Coba muat ulang halaman atau periksa tautan CDN.");
+        alert("Library PDF (jsPDF) tidak ditemukan.");
         return;
     }
 
+    // Gunakan data yang disimpan di hasilPerhitunganAspal untuk konten PDF
     const printContent = `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
             <h2 style="color: #007bff; border-bottom: 2px solid #ccc; padding-bottom: 10px;">Laporan Perkiraan Biaya Pengaspalan</h2>
@@ -176,12 +178,33 @@ function generatePDF() {
     tempElement.innerHTML = printContent;
     document.body.appendChild(tempElement);
     
+    // Gunakan html2canvas
     html2canvas(tempElement, { scale: 3 }).then(canvas => {
-        const pdf = new JsPdfConstructor({ 
-        orientation: 'p', 
-        unit: 'mm', 
-        format: 'a4' 
+        const pdf = new JsPdfConstructor({
+            orientation: 'p', unit: 'mm', format: 'a4'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 190; 
+        const imgHeight = canvas.height * imgWidth / canvas.width;
+        
+        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+        
+        document.body.removeChild(tempElement); // Bersihkan elemen temporer
+
+        // -----------------------------------------------------------
+        // SOLUSI POPUP: Menggunakan output('dataurlnewwindow')
+        // Ini lebih andal karena tidak memicu download file secara otomatis,
+        // melainkan membuka PDF di jendela baru.
+        // -----------------------------------------------------------
+        pdf.output('dataurlnewwindow');
+        
+        // Peringatan: Beberapa browser mungkin masih memblokir pop-up
+        // kecuali aksi ini dipicu langsung oleh klik pengguna.
+        
+        // Catatan: pdf.save() yang sebelumnya bermasalah telah dihapus.
     });
+}
 
         const imgData = canvas.toDataURL('image/png');
         const imgWidth = 190; 
