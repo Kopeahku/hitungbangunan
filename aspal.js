@@ -1,7 +1,5 @@
-// Data Harga Aspal (DIUBAH KE BIAYA PER METER KUBIK)
+// Data Harga Aspal (Biaya per Meter Kubik)
 const BIAYA_JENIS_ASPAL = {
-    // Angka ini adalah biaya per meter kubik (m³).
-    // Anggap Hotmix B 700.000, Hotmix A 950.000, Penetrasi 500.000 per m³
     hotmixA: 950000, 
     hotmixB: 700000, 
     penetration: 500000
@@ -9,6 +7,7 @@ const BIAYA_JENIS_ASPAL = {
 
 let hasilPerhitunganAspal = null; 
 
+// Fungsi format Rupiah (tetap sama)
 function formatRupiah(angka) {
     const roundedAngka = Math.round(angka);
     if (isNaN(roundedAngka) || roundedAngka < 0) return "Rp 0";
@@ -19,25 +18,57 @@ function formatRupiah(angka) {
     return `Rp ${result}`;
 }
 
+// -----------------------------------------------------------------
+// FUNGSI BARU: Mengubah Mode Input Harga
+// -----------------------------------------------------------------
+function toggleHargaMode() {
+    const mode = document.getElementById('modeHarga').value;
+    const jenisAspalSelect = document.getElementById('jenisAspal');
+    const biayaManualInput = document.getElementById('biayaManual');
+
+    if (mode === 'manual') {
+        biayaManualInput.disabled = false;
+        jenisAspalSelect.disabled = true;
+        jenisAspalSelect.value = 'default'; // Reset pilihan jenis
+    } else { // Otomatis
+        biayaManualInput.disabled = true;
+        biayaManualInput.value = '0'; // Reset harga manual
+        jenisAspalSelect.disabled = false;
+    }
+    // Lakukan perhitungan setelah mode diubah
+    hitungBiayaAspal();
+}
+
+
+// -----------------------------------------------------------------
+// FUNGSI PERHITUNGAN UTAMA (Dimodifikasi)
+// -----------------------------------------------------------------
 function hitungBiayaAspal() {
-    // 1. Ambil Input
-    const jenisAspalValue = document.getElementById('jenisAspal').value;
+    // 1. Ambil Input Dimensi
     const panjang = parseFloat(document.getElementById('panjang').value) || 0;
     const lebar = parseFloat(document.getElementById('lebar').value) || 0;
-    const tinggiCm = parseFloat(document.getElementById('tinggi').value) || 0; // Input baru
-    
-    const tinggiM = tinggiCm / 100; // Konversi cm ke meter
+    const tinggiCm = parseFloat(document.getElementById('tinggi').value) || 0;
+    const tinggiM = tinggiCm / 100;
 
+    // 2. Tentukan Mode dan Biaya
+    const modeHarga = document.getElementById('modeHarga').value;
+    const jenisAspalValue = document.getElementById('jenisAspal').value;
+    let biayaPerM3 = 0;
+    let jenisLaporanText = "N/A";
+
+    if (modeHarga === 'otomatis') {
+        biayaPerM3 = BIAYA_JENIS_ASPAL[jenisAspalValue] || 0;
+        jenisLaporanText = document.getElementById('jenisAspal').options[document.getElementById('jenisAspal').selectedIndex].text;
+    } else { // Manual
+        biayaPerM3 = parseFloat(document.getElementById('biayaManual').value) || 0;
+        jenisLaporanText = "Harga Manual";
+    }
+
+    // 3. Validasi dan Tampilan Awal
     const downloadPdfBtn = document.getElementById('downloadPdfButton');
-    const jenisTerpilihText = document.getElementById('jenisAspal').options[document.getElementById('jenisAspal').selectedIndex].text;
-
-    let biayaPerM3 = BIAYA_JENIS_ASPAL[jenisAspalValue] || 0;
     
-    // Tampilkan Biaya per M3 Otomatis
-    document.getElementById('biayaM3DisplayInput').textContent = formatRupiah(biayaPerM3);
-
-    if (panjang <= 0 || lebar <= 0 || tinggiCm <= 0 || biayaPerM3 <= 0) {
-        document.getElementById('jenisTerpilih').textContent = 'Belum dipilih / Input tidak valid';
+    if (panjang <= 0 || lebar <= 0 || tinggiCm <= 0 || biayaPerM3 <= 0 || (modeHarga === 'otomatis' && jenisAspalValue === 'default')) {
+        document.getElementById('jenisTerpilih').textContent = 'Input/Harga tidak valid';
         document.getElementById('luasArea').textContent = '0';
         document.getElementById('volumeTotal').textContent = '0';
         document.getElementById('totalBiaya').textContent = 'Rp 0';
@@ -46,20 +77,20 @@ function hitungBiayaAspal() {
         return;
     }
 
-    // 2. Perhitungan Volume
+    // 4. Perhitungan
     const luasArea = panjang * lebar;
-    const volumeTotal = luasArea * tinggiM; // Volume = P x L x T(m)
+    const volumeTotal = luasArea * tinggiM;
     const totalBiaya = volumeTotal * biayaPerM3;
 
-    // 3. Tampilkan Hasil
-    document.getElementById('jenisTerpilih').textContent = jenisTerpilihText;
+    // 5. Tampilkan Hasil
+    document.getElementById('jenisTerpilih').textContent = jenisLaporanText;
     document.getElementById('luasArea').textContent = luasArea.toFixed(2);
-    document.getElementById('volumeTotal').textContent = volumeTotal.toFixed(3); // Tampilkan 3 desimal untuk volume
+    document.getElementById('volumeTotal').textContent = volumeTotal.toFixed(3);
     document.getElementById('totalBiaya').textContent = formatRupiah(totalBiaya);
     
-    // 4. Simpan data untuk PDF
+    // 6. Simpan data untuk PDF
     hasilPerhitunganAspal = {
-        jenis: jenisTerpilihText,
+        jenis: jenisLaporanText + (modeHarga === 'manual' ? ' (Harga Manual)' : ''),
         panjang: panjang,
         lebar: lebar,
         tinggiCm: tinggiCm,
@@ -73,12 +104,18 @@ function hitungBiayaAspal() {
 }
 
 // -----------------------------------------------------------------
-// FUNGSI PDF (Menggunakan html2canvas & jsPDF)
+// FUNGSI PDF (tetap sama)
 // -----------------------------------------------------------------
 function generatePDF() {
     if (!hasilPerhitunganAspal) return;
 
-    // *Modifikasi:* Gunakan data yang disimpan di hasilPerhitunganAspal untuk konten yang lebih detail di PDF
+    // Pastikan window.jspdf ada, karena dimuat dari CDN
+    if (typeof window.jspdf === 'undefined') {
+        alert("Library PDF (jsPDF) belum dimuat. Coba muat ulang halaman.");
+        return;
+    }
+
+    // Gunakan data yang disimpan di hasilPerhitunganAspal untuk konten PDF
     const printContent = `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
             <h2 style="color: #007bff; border-bottom: 2px solid #ccc; padding-bottom: 10px;">Laporan Perkiraan Biaya Pengaspalan</h2>
@@ -101,12 +138,10 @@ function generatePDF() {
         </div>
     `;
 
-    // 5. Buat elemen temporer untuk konten PDF
     const tempElement = document.createElement('div');
     tempElement.innerHTML = printContent;
     document.body.appendChild(tempElement);
     
-    // 6. Gunakan html2canvas pada elemen temporer
     html2canvas(tempElement, { scale: 3 }).then(canvas => {
         const pdf = new window.jspdf.jsPDF({
             orientation: 'p', unit: 'mm', format: 'a4'
@@ -118,15 +153,16 @@ function generatePDF() {
         
         pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
         
-        // Bersihkan elemen temporer
         document.body.removeChild(tempElement);
 
-        // 7. Unduh PDF
         const totalRp = formatRupiah(hasilPerhitunganAspal.total);
-        const fileName = `Laporan_Aspal_${hasilPerhitunganAspal.jenis}_${totalRp.replace(/[^a-zA-Z0-9]/g, '')}.pdf`;
+        const fileName = `Laporan_Aspal_${hasilPerhitunganAspal.jenis.replace(/[^a-zA-Z0-9]/g, '_')}_${totalRp.replace(/[^a-zA-Z0-9]/g, '')}.pdf`;
         pdf.save(fileName);
     });
 }
 
-// Inisiasi
-document.addEventListener('DOMContentLoaded', hitungBiayaAspal);
+// Inisiasi (Panggil toggle dan hitung saat startup)
+document.addEventListener('DOMContentLoaded', () => {
+    toggleHargaMode();
+    hitungBiayaAspal();
+});
