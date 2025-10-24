@@ -155,10 +155,21 @@ function hitungBiayaAspal() {
 // =================================================================
 
 /**
- * Membuat konten HTML untuk PDF.
+ // =================================================================
+// BAGIAN 4: FUNGSI DOWNLOAD PDF
+// =================================================================
+
+/**
+ * Membuat konten HTML yang diformat untuk dimasukkan ke PDF.
  */
 function createPdfContentHtml() {
     if (!hasilPerhitunganAspal) return '';
+
+    // Ambil nilai yang sudah dihitung
+    const volume = parseFloat(hasilPerhitunganAspal.volume); // m3
+    const densitas = hasilPerhitunganAspal.densitas; // kg/m3
+    const massaKg = volume * densitas;
+    const massaTon = massaKg / 1000;
 
     return `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -174,7 +185,27 @@ function createPdfContentHtml() {
                 <tr><td style="font-weight: bold; padding: 5px 0;">Densitas Aspal:</td><td>${hasilPerhitunganAspal.densitas} kg/m³</td></tr> 
                 <tr><td style="font-weight: bold; padding: 5px 0;">Luas Total:</td><td>${hasilPerhitunganAspal.luas} m²</td></tr>
                 <tr><td style="font-weight: bold; padding: 5px 0;">Volume Total:</td><td>${hasilPerhitunganAspal.volume} m³</td></tr>
-                <tr><td style="font-weight: bold; padding: 5px 0;">Massa Total:</td><td>${hasilPerhitunganAspal.massa} Ton</td></tr> 
+            </table>
+
+            <h3 style="margin-top: 20px; color: #333;">Rincian Perhitungan Massa Aspal</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 5px 0;">Volume Total</td>
+                    <td>= ${volume.toFixed(3)} m³</td>
+                </tr>
+                <tr>
+                    <td style="padding: 5px 0;">$\times$ Densitas</td>
+                    <td>= ${densitas} kg/m³</td>
+                </tr>
+                <tr><td colspan="2" style="border-top: 1px solid #ccc;"></td></tr>
+                <tr>
+                    <td style="font-weight: bold; padding: 5px 0;">Massa Total (kg)</td>
+                    <td style="font-weight: bold;">= ${massaKg.toFixed(3)} kg</td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; padding: 5px 0;">Massa Total (Ton)</td>
+                    <td style="font-weight: bold; color: #dc3545;">= ${massaTon.toFixed(3)} Ton</td>
+                </tr>
             </table>
 
             <h3 style="margin-top: 20px; color: #333;">Rincian Biaya</h3>
@@ -184,6 +215,8 @@ function createPdfContentHtml() {
         </div>
     `;
 }
+
+// ... (sisa kode di bawahnya tetap sama) ...
 
 function generatePDF() {
     if (!hasilPerhitunganAspal) return;
