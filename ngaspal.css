@@ -1,0 +1,101 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 450px;
+}
+
+h1 {
+    text-align: center;
+    color: #007bff;
+    margin-bottom: 25px;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+    font-size: 0.95em;
+}
+
+.input-group input, .input-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 16px;
+}
+
+.input-group input[disabled] {
+    background-color: #e9ecef;
+    color: #6c757d;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:first-of-type { /* Hitung */
+    background-color: #28a745;
+    color: white;
+}
+
+#downloadPdfButton {
+    background-color: #dc3545; /* Merah untuk PDF */
+    color: white;
+}
+
+#downloadPdfButton:disabled {
+    background-color: #adb5bd;
+    cursor: not-allowed;
+}
+
+.hasil {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #e6f7ff;
+    border: 1px solid #b3e0ff;
+    border-radius: 6px;
+}
+
+.hasil h2 {
+    margin-top: 0;
+    color: #007bff;
+    border-bottom: 1px solid #b3e0ff;
+    padding-bottom: 10px;
+}
+
+.total-output {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #dc3545;
+    margin-top: 15px;
+    border-top: 2px solid #dc3545;
+    padding-top: 10px;
+}
