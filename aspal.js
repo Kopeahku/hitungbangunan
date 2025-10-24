@@ -17,8 +17,6 @@ let hasilPerhitunganAspal = null;
 
 /**
  * Memformat angka menjadi string Rupiah menggunakan Intl.NumberFormat.
- * @param {number} angka
- * @returns {string} Format Rp. XXX.XXX
  */
 function formatRupiah(angka) {
     const roundedAngka = Math.round(angka);
@@ -77,13 +75,13 @@ function updateHargaOtomatis() {
 }
 
 // =================================================================
-// BAGIAN 3: LOGIKA PERHITUNGAN
+// BAGIAN 3: LOGIKA PERHITUNGAN UTAMA
 // =================================================================
 
 function hitungBiayaAspal() {
     updateHargaOtomatis(); 
 
-    // Ambil input dimensi
+    // Ambil input
     const panjang = parseFloat(document.getElementById('panjang').value) || 0;
     const lebar = parseFloat(document.getElementById('lebar').value) || 0;
     const tinggiCm = parseFloat(document.getElementById('tinggi').value) || 0;
@@ -91,29 +89,29 @@ function hitungBiayaAspal() {
     
     const tinggiM = tinggiCm / 100;
 
-    // Tentukan Biaya
+    // Tentukan Biaya & Jenis
     const modeHarga = document.getElementById('modeHarga').value;
     const jenisAspalValue = document.getElementById('jenisAspal').value;
     let biayaPerM3 = parseFloat(document.getElementById('biayaManual').value) || 0;
-    let jenisLaporanText = "N/A";
-
-    if (modeHarga === 'otomatis') {
-        jenisLaporanText = document.getElementById('jenisAspal').options[document.getElementById('jenisAspal').selectedIndex].text;
-    } else {
-        jenisLaporanText = "Harga Manual";
-    }
+    let jenisLaporanText = (modeHarga === 'otomatis' && jenisAspalValue !== 'default') 
+        ? document.getElementById('jenisAspal').options[document.getElementById('jenisAspal').selectedIndex].text
+        : "Harga Manual";
 
     // Validasi
     const downloadPdfBtn = document.getElementById('downloadPdfButton');
+    const downloadCsvBtn = document.getElementById('downloadCsvButton');
+
     const isValid = panjang > 0 && lebar > 0 && tinggiCm > 0 && densitasKgM3 > 0 && biayaPerM3 > 0 && !(modeHarga === 'otomatis' && jenisAspalValue === 'default');
 
     if (!isValid) {
+        // Reset UI dan nonaktifkan tombol
         document.getElementById('jenisTerpilih').textContent = 'Input/Harga tidak valid';
         document.getElementById('luasArea').textContent = '0';
         document.getElementById('volumeTotal').textContent = '0';
         document.getElementById('massaTotal').textContent = '0'; 
         document.getElementById('totalBiaya').textContent = 'Rp 0';
         downloadPdfBtn.disabled = true;
+        downloadCsvBtn.disabled = true;
         hasilPerhitunganAspal = null;
         return;
     }
@@ -123,7 +121,6 @@ function hitungBiayaAspal() {
     const volumeTotal = luasArea * tinggiM;
     const massaTotalKg = volumeTotal * densitasKgM3;
     const massaTotalTon = massaTotalKg / 1000;
-    
     const totalBiaya = volumeTotal * biayaPerM3;
 
     // Tampilkan Hasil di UI
@@ -133,7 +130,7 @@ function hitungBiayaAspal() {
     document.getElementById('massaTotal').textContent = massaTotalTon.toFixed(3);
     document.getElementById('totalBiaya').textContent = formatRupiah(totalBiaya);
     
-    // Simpan data hasil untuk PDF
+    // Simpan data hasil untuk PDF/CSV
     hasilPerhitunganAspal = {
         jenis: jenisLaporanText + (modeHarga === 'manual' ? ' (Harga Manual)' : ''),
         panjang: panjang,
@@ -144,18 +141,21 @@ function hitungBiayaAspal() {
         volume: volumeTotal.toFixed(3),
         massa: massaTotalTon.toFixed(3),
         biayaM3: formatRupiah(biayaPerM3),
+        // Simpan nilai total mentah untuk CSV
+        totalMentah: totalBiaya, 
         total: totalBiaya
     };
     
     downloadPdfBtn.disabled = false;
+    downloadCsvBtn.disabled = false;
 }
 
 // =================================================================
-// BAGIAN 4: FUNGSI PDF GENERATION (Download Langsung yang Andal)
+// BAGIAN 4: FUNGSI DOWNLOAD PDF
 // =================================================================
 
 /**
- * Membuat konten HTML yang diformat untuk dimasukkan ke PDF.
+ * Membuat konten HTML untuk PDF.
  */
 function createPdfContentHtml() {
     if (!hasilPerhitunganAspal) return '';
@@ -188,7 +188,6 @@ function createPdfContentHtml() {
 function generatePDF() {
     if (!hasilPerhitunganAspal) return;
 
-    // Tentukan konstruktor jsPDF yang paling andal
     const JsPdfConstructor = window.jspdf && window.jspdf.jsPDF ? window.jspdf.jsPDF : window.jsPDF;
     if (typeof JsPdfConstructor === 'undefined') {
         alert("Library PDF (jsPDF) tidak ditemukan. Periksa link CDN.");
@@ -197,12 +196,10 @@ function generatePDF() {
 
     const printContent = createPdfContentHtml();
 
-    // Buat elemen temporer untuk rendering HTML2Canvas
     const tempElement = document.createElement('div');
     tempElement.innerHTML = printContent;
     document.body.appendChild(tempElement);
     
-    // Gunakan html2canvas untuk mengubah HTML menjadi gambar
     html2canvas(tempElement, { scale: 3 }).then(canvas => {
         const pdf = new JsPdfConstructor({
             orientation: 'p', unit: 'mm', format: 'a4'
@@ -214,9 +211,9 @@ function generatePDF() {
         
         pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
         
-        document.body.removeChild(tempElement); // Bersihkan elemen temporer
+        document.body.removeChild(tempElement); 
 
-        // Download Langsung (Metode yang paling andal untuk download file)
+        // Download Langsung menggunakan pdf.save()
         const totalRp = formatRupiah(hasilPerhitunganAspal.total);
         const safeName = hasilPerhitunganAspal.jenis.replace(/[^a-zA-Z0-9]/g, '_'); 
         const fileName = `Laporan_Aspal_${safeName}_Total_${totalRp.replace(/[^0-9]/g, '')}.pdf`;
@@ -226,7 +223,56 @@ function generatePDF() {
 }
 
 // =================================================================
-// BAGIAN 5: INISIASI (Event Listeners)
+// BAGIAN 5: FUNGSI DOWNLOAD CSV
+// =================================================================
+
+/**
+ * Mengubah data hasil perhitungan menjadi format CSV dan memicu download.
+ */
+function generateCSV() {
+    if (!hasilPerhitunganAspal) return;
+
+    // Header CSV (Kolom)
+    const header = [
+        "Parameter", 
+        "Nilai"
+    ].join(",");
+    
+    // Data CSV (Baris). Menggunakan totalMentah untuk nilai numerik murni.
+    const dataRows = [
+        ["Jenis Aspal", hasilPerhitunganAspal.jenis],
+        ["Panjang (m)", hasilPerhitunganAspal.panjang],
+        ["Lebar (m)", hasilPerhitunganAspal.lebar],
+        ["Tinggi/Tebal (cm)", hasilPerhitunganAspal.tinggiCm],
+        ["Densitas (kg/m3)", hasilPerhitunganAspal.densitas],
+        ["Luas Total (m2)", hasilPerhitunganAspal.luas],
+        ["Volume Total (m3)", hasilPerhitunganAspal.volume],
+        ["Massa Total (Ton)", hasilPerhitunganAspal.massa],
+        // Ambil Biaya per M3 dari perhitungan total/volume (nilai mentah)
+        ["Biaya per M3 (Rp)", (hasilPerhitunganAspal.totalMentah / hasilPerhitunganAspal.volume).toFixed(0)],
+        ["TOTAL BIAYA", hasilPerhitunganAspal.totalMentah.toFixed(0)]
+    ].map(row => row.join(",")).join("\n"); 
+
+    const csvContent = header + "\n" + dataRows;
+    
+    // Membuat Blob dan URL untuk file download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    // Nama file
+    const safeName = hasilPerhitunganAspal.jenis.replace(/[^a-zA-Z0-9]/g, '_'); 
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Laporan_Aspal_${safeName}.csv`);
+    
+    // Memicu download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// =================================================================
+// BAGIAN 6: INISIASI (Event Listeners)
 // =================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -237,7 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listener untuk semua input dimensi, densitas, dan harga manual
     const inputs = ['panjang', 'lebar', 'tinggi', 'densitas', 'biayaManual'];
     inputs.forEach(id => {
-        // Gunakan 'input' agar perhitungan real-time saat mengetik
         document.getElementById(id).addEventListener('input', hitungBiayaAspal);
     });
 
