@@ -141,8 +141,12 @@ function hitungBiayaAspal() {
 function generatePDF() {
     if (!hasilPerhitunganAspal) return;
 
-    if (typeof window.jspdf === 'undefined') {
-        alert("Library PDF (jsPDF) belum dimuat. Coba muat ulang halaman.");
+    // 1. Tentukan Objek jsPDF
+    // Gunakan window.jspdf.jsPDF (UMD) sebagai default, atau fallback ke window.jsPDF (Legacy)
+    const JsPdfConstructor = window.jspdf && window.jspdf.jsPDF ? window.jspdf.jsPDF : window.jsPDF;
+    
+    if (typeof JsPdfConstructor === 'undefined') {
+        alert("Library PDF (jsPDF) tidak ditemukan. Coba muat ulang halaman atau periksa tautan CDN.");
         return;
     }
 
@@ -173,9 +177,11 @@ function generatePDF() {
     document.body.appendChild(tempElement);
     
     html2canvas(tempElement, { scale: 3 }).then(canvas => {
-        const pdf = new window.jspdf.jsPDF({
-            orientation: 'p', unit: 'mm', format: 'a4'
-        });
+        const pdf = new JsPdfConstructor({ 
+        orientation: 'p', 
+        unit: 'mm', 
+        format: 'a4' 
+    });
 
         const imgData = canvas.toDataURL('image/png');
         const imgWidth = 190; 
