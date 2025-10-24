@@ -12,19 +12,16 @@ const BIAYA_JENIS_ASPAL = {
 let hasilPerhitunganAspal = null; 
 
 // =================================================================
-// BAGIAN 2: UTILITY FUNCTIONS
+// BAGIAN 2: UTILITY FUNCTIONS (Format & Toggle Mode)
 // =================================================================
 
 /**
  * Memformat angka menjadi string Rupiah.
- * @param {number} angka
- * @returns {string} Format Rp. XXX.XXX
  */
 function formatRupiah(angka) {
     const roundedAngka = Math.round(angka);
     if (isNaN(roundedAngka) || roundedAngka < 0) return "Rp 0";
     
-    // Menggunakan Intl.NumberFormat untuk formatting yang lebih rapi
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
@@ -40,19 +37,16 @@ function toggleHargaMode() {
     const jenisAspalSelect = document.getElementById('jenisAspal');
     const biayaManualInput = document.getElementById('biayaManual');
 
-    // Default: Semua nonaktif
     biayaManualInput.disabled = true;
     jenisAspalSelect.disabled = true;
 
     if (mode === 'manual') {
         biayaManualInput.disabled = false;
-        // Hanya set placeholder sebagai panduan, tidak mengubah nilai otomatis
         biayaManualInput.placeholder = 'Masukkan harga per m³'; 
     } else { // Otomatis
         jenisAspalSelect.disabled = false;
     }
     
-    // Panggil update harga dan perhitungan setelah mode diubah
     updateHargaOtomatis();
     hitungBiayaAspal();
 }
@@ -68,25 +62,24 @@ function updateHargaOtomatis() {
     if (mode === 'otomatis') {
         let hargaOtomatis = BIAYA_JENIS_ASPAL[jenisAspalValue] || 0;
         
-        // Atur nilai input manual ke harga otomatis (digunakan untuk perhitungan)
         biayaManualInput.value = hargaOtomatis;
-        
-        // Tampilkan format Rupiah di placeholder/sebagai feedback
         biayaManualInput.placeholder = formatRupiah(hargaOtomatis);
     }
 }
 
 // =================================================================
-// BAGIAN 3: LOGIKA PERHITUNGAN
+// BAGIAN 3: LOGIKA PERHITUNGAN (Modifikasi untuk Densitas)
 // =================================================================
 
 function hitungBiayaAspal() {
-    updateHargaOtomatis(); // Pastikan harga otomatis terbaru sudah dimuat
+    updateHargaOtomatis(); 
 
     // Ambil input dimensi
     const panjang = parseFloat(document.getElementById('panjang').value) || 0;
     const lebar = parseFloat(document.getElementById('lebar').value) || 0;
     const tinggiCm = parseFloat(document.getElementById('tinggi').value) || 0;
+    const densitasKgM3 = parseFloat(document.getElementById('densitas').value) || 0; // INPUT BARU
+    
     const tinggiM = tinggiCm / 100;
 
     // Tentukan Biaya
@@ -103,12 +96,14 @@ function hitungBiayaAspal() {
 
     // Validasi
     const downloadPdfBtn = document.getElementById('downloadPdfButton');
-    const isValid = panjang > 0 && lebar > 0 && tinggiCm > 0 && biayaPerM3 > 0 && !(modeHarga === 'otomatis' && jenisAspalValue === 'default');
+    // Tambahkan densitas ke validasi
+    const isValid = panjang > 0 && lebar > 0 && tinggiCm > 0 && densitasKgM3 > 0 && biayaPerM3 > 0 && !(modeHarga === 'otomatis' && jenisAspalValue === 'default');
 
     if (!isValid) {
         document.getElementById('jenisTerpilih').textContent = 'Input/Harga tidak valid';
         document.getElementById('luasArea').textContent = '0';
         document.getElementById('volumeTotal').textContent = '0';
+        document.getElementById('massaTotal').textContent = '0'; // Reset Massa
         document.getElementById('totalBiaya').textContent = 'Rp 0';
         downloadPdfBtn.disabled = true;
         hasilPerhitunganAspal = null;
@@ -118,12 +113,16 @@ function hitungBiayaAspal() {
     // Perhitungan
     const luasArea = panjang * lebar;
     const volumeTotal = luasArea * tinggiM;
+    const massaTotalKg = volumeTotal * densitasKgM3;
+    const massaTotalTon = massaTotalKg / 1000; // Konversi kg ke ton
+    
     const totalBiaya = volumeTotal * biayaPerM3;
 
     // Tampilkan Hasil di UI
     document.getElementById('jenisTerpilih').textContent = jenisLaporanText;
     document.getElementById('luasArea').textContent = luasArea.toFixed(2);
     document.getElementById('volumeTotal').textContent = volumeTotal.toFixed(3);
+    document.getElementById('massaTotal').textContent = massaTotalTon.toFixed(3); // Tampilkan Massa
     document.getElementById('totalBiaya').textContent = formatRupiah(totalBiaya);
     
     // Simpan data hasil untuk PDF
@@ -132,8 +131,10 @@ function hitungBiayaAspal() {
         panjang: panjang,
         lebar: lebar,
         tinggiCm: tinggiCm,
+        densitas: densitasKgM3, // Tambahkan Densitas
         luas: luasArea.toFixed(2),
         volume: volumeTotal.toFixed(3),
+        massa: massaTotalTon.toFixed(3), // Tambahkan Massa
         biayaM3: formatRupiah(biayaPerM3),
         total: totalBiaya
     };
@@ -142,12 +143,11 @@ function hitungBiayaAspal() {
 }
 
 // =================================================================
-// BAGIAN 4: FUNGSI PDF GENERATION
+// BAGIAN 4: FUNGSI PDF GENERATION (Modifikasi Konten)
 // =================================================================
 
 /**
- * Membuat konten HTML yang diformat untuk dimasukkan ke PDF (melalui html2canvas).
- * @returns {string} HTML string
+ * Membuat konten HTML yang diformat untuk dimasukkan ke PDF.
  */
 function createPdfContentHtml() {
     if (!hasilPerhitunganAspal) return '';
@@ -163,8 +163,10 @@ function createPdfContentHtml() {
                 <tr><td style="font-weight: bold; padding: 5px 0;">Panjang:</td><td>${hasilPerhitunganAspal.panjang} meter</td></tr>
                 <tr><td style="font-weight: bold; padding: 5px 0;">Lebar:</td><td>${hasilPerhitunganAspal.lebar} meter</td></tr>
                 <tr><td style="font-weight: bold; padding: 5px 0;">Tinggi/Tebal:</td><td>${hasilPerhitunganAspal.tinggiCm} cm</td></tr>
+                <tr><td style="font-weight: bold; padding: 5px 0;">Densitas Aspal:</td><td>${hasilPerhitunganAspal.densitas} kg/m³</td></tr> 
                 <tr><td style="font-weight: bold; padding: 5px 0;">Luas Total:</td><td>${hasilPerhitunganAspal.luas} m²</td></tr>
                 <tr><td style="font-weight: bold; padding: 5px 0;">Volume Total:</td><td>${hasilPerhitunganAspal.volume} m³</td></tr>
+                <tr><td style="font-weight: bold; padding: 5px 0;">Massa Total:</td><td>${hasilPerhitunganAspal.massa} Ton</td></tr> 
             </table>
 
             <h3 style="margin-top: 20px; color: #333;">Rincian Biaya</h3>
@@ -179,7 +181,6 @@ function generatePDF() {
     if (!hasilPerhitunganAspal) return;
 
     const JsPdfConstructor = window.jspdf && window.jspdf.jsPDF ? window.jspdf.jsPDF : window.jsPDF;
-    
     if (typeof JsPdfConstructor === 'undefined') {
         alert("Library PDF (jsPDF) tidak ditemukan.");
         return;
@@ -203,9 +204,7 @@ function generatePDF() {
         pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
         
         document.body.removeChild(tempElement);
-
-        // Menggunakan output('dataurlnewwindow') untuk keandalan
-        pdf.output('dataurlnewwindow');
+        pdf.output('dataurlnewwindow'); // Solusi Pop-up yang andal
     });
 }
 
@@ -219,11 +218,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('jenisAspal').addEventListener('change', hitungBiayaAspal); 
 
     // Event listener untuk semua input dimensi dan harga manual
-    const inputs = ['panjang', 'lebar', 'tinggi', 'biayaManual'];
+    const inputs = ['panjang', 'lebar', 'tinggi', 'densitas', 'biayaManual']; // Tambahkan 'densitas'
     inputs.forEach(id => {
         document.getElementById(id).addEventListener('input', hitungBiayaAspal);
     });
 
-    // Panggil inisiasi saat startup
     toggleHargaMode();
 });
