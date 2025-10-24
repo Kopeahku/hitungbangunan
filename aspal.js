@@ -19,24 +19,52 @@ function formatRupiah(angka) {
 }
 
 // -----------------------------------------------------------------
-// FUNGSI BARU: Mengubah Mode Input Harga
+// FUNGSI UTAMA: Mengubah Mode Input Harga
 // -----------------------------------------------------------------
 function toggleHargaMode() {
     const mode = document.getElementById('modeHarga').value;
     const jenisAspalSelect = document.getElementById('jenisAspal');
     const biayaManualInput = document.getElementById('biayaManual');
+    
+    // Nonaktifkan dan Atur ulang default
+    biayaManualInput.disabled = true;
+    jenisAspalSelect.disabled = true;
 
     if (mode === 'manual') {
         biayaManualInput.disabled = false;
-        jenisAspalSelect.disabled = true;
-        jenisAspalSelect.value = 'default'; // Reset pilihan jenis
+        // Biarkan nilai jenis aspal tetap, tapi tidak digunakan
+        
     } else { // Otomatis
-        biayaManualInput.disabled = true;
-        biayaManualInput.value = '0'; // Reset harga manual
         jenisAspalSelect.disabled = false;
+        // Set harga manual ke 0 agar tidak mengganggu perhitungan
+        biayaManualInput.value = 0; 
+
+        // Panggil fungsi untuk memperbarui harga otomatis saat mode kembali
+        updateHargaOtomatis();
     }
-    // Lakukan perhitungan setelah mode diubah
+    
     hitungBiayaAspal();
+}
+
+// -----------------------------------------------------------------
+// FUNGSI BARU: Memperbarui Harga Manual dengan Harga Otomatis
+// -----------------------------------------------------------------
+function updateHargaOtomatis() {
+    const mode = document.getElementById('modeHarga').value;
+    const jenisAspalValue = document.getElementById('jenisAspal').value;
+    const biayaManualInput = document.getElementById('biayaManual');
+
+    // Hanya bekerja dalam mode Otomatis
+    if (mode === 'otomatis') {
+        let hargaOtomatis = BIAYA_JENIS_ASPAL[jenisAspalValue] || 0;
+        
+        // Atur nilai input manual ke harga otomatis (meskipun disabled)
+        // Ini memastikan biaya yang dipakai dalam perhitungan adalah harga yang ditampilkan
+        biayaManualInput.value = hargaOtomatis;
+        
+        // Tampilkan harga di field yang disabled (sebagai feedback visual)
+        biayaManualInput.placeholder = formatRupiah(hargaOtomatis);
+    }
 }
 
 
@@ -44,6 +72,9 @@ function toggleHargaMode() {
 // FUNGSI PERHITUNGAN UTAMA (Dimodifikasi)
 // -----------------------------------------------------------------
 function hitungBiayaAspal() {
+    // Panggil updateHargaOtomatis setiap kali hitungBiaya dipanggil
+    updateHargaOtomatis(); 
+
     // 1. Ambil Input Dimensi
     const panjang = parseFloat(document.getElementById('panjang').value) || 0;
     const lebar = parseFloat(document.getElementById('lebar').value) || 0;
@@ -57,7 +88,7 @@ function hitungBiayaAspal() {
     let jenisLaporanText = "N/A";
 
     if (modeHarga === 'otomatis') {
-        biayaPerM3 = BIAYA_JENIS_ASPAL[jenisAspalValue] || 0;
+        biayaPerM3 = parseFloat(document.getElementById('biayaManual').value) || 0; // Ambil nilai yang sudah diisi otomatis
         jenisLaporanText = document.getElementById('jenisAspal').options[document.getElementById('jenisAspal').selectedIndex].text;
     } else { // Manual
         biayaPerM3 = parseFloat(document.getElementById('biayaManual').value) || 0;
@@ -67,6 +98,7 @@ function hitungBiayaAspal() {
     // 3. Validasi dan Tampilan Awal
     const downloadPdfBtn = document.getElementById('downloadPdfButton');
     
+    // Cek kondisi invalid
     if (panjang <= 0 || lebar <= 0 || tinggiCm <= 0 || biayaPerM3 <= 0 || (modeHarga === 'otomatis' && jenisAspalValue === 'default')) {
         document.getElementById('jenisTerpilih').textContent = 'Input/Harga tidak valid';
         document.getElementById('luasArea').textContent = '0';
@@ -104,18 +136,16 @@ function hitungBiayaAspal() {
 }
 
 // -----------------------------------------------------------------
-// FUNGSI PDF (tetap sama)
+// FUNGSI PDF (Tidak ada perubahan, tetapi harus disertakan)
 // -----------------------------------------------------------------
 function generatePDF() {
     if (!hasilPerhitunganAspal) return;
 
-    // Pastikan window.jspdf ada, karena dimuat dari CDN
     if (typeof window.jspdf === 'undefined') {
         alert("Library PDF (jsPDF) belum dimuat. Coba muat ulang halaman.");
         return;
     }
 
-    // Gunakan data yang disimpan di hasilPerhitunganAspal untuk konten PDF
     const printContent = `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
             <h2 style="color: #007bff; border-bottom: 2px solid #ccc; padding-bottom: 10px;">Laporan Perkiraan Biaya Pengaspalan</h2>
@@ -161,8 +191,10 @@ function generatePDF() {
     });
 }
 
-// Inisiasi (Panggil toggle dan hitung saat startup)
+// Inisiasi
 document.addEventListener('DOMContentLoaded', () => {
     toggleHargaMode();
+    // Tambahkan event listener untuk Jenis Aspal agar harga diperbarui saat pilihan berubah
+    document.getElementById('jenisAspal').addEventListener('change', hitungBiayaAspal); 
     hitungBiayaAspal();
 });
