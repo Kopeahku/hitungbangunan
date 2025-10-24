@@ -141,7 +141,7 @@ function hitungBiayaAspal() {
         volume: volumeTotal.toFixed(3),
         massa: massaTotalTon.toFixed(3),
         biayaM3: formatRupiah(biayaPerM3),
-        // Simpan nilai total mentah untuk CSV
+        // Simpan nilai total mentah untuk CSV dan rincian perhitungan massa
         totalMentah: totalBiaya, 
         total: totalBiaya
     };
@@ -155,21 +155,19 @@ function hitungBiayaAspal() {
 // =================================================================
 
 /**
- // =================================================================
-// BAGIAN 4: FUNGSI DOWNLOAD PDF
-// =================================================================
-
-/**
- * Membuat konten HTML yang diformat untuk dimasukkan ke PDF.
+ * Membuat konten HTML untuk PDF, termasuk rincian perhitungan massa.
  */
 function createPdfContentHtml() {
     if (!hasilPerhitunganAspal) return '';
 
-    // Ambil nilai yang sudah dihitung
+    // Ambil nilai yang sudah dihitung untuk rincian massa
     const volume = parseFloat(hasilPerhitunganAspal.volume); // m3
     const densitas = hasilPerhitunganAspal.densitas; // kg/m3
     const massaKg = volume * densitas;
     const massaTon = massaKg / 1000;
+    
+    // Perhitungan biaya per m3 mentah
+    const biayaM3Mentah = hasilPerhitunganAspal.totalMentah / volume;
 
     return `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -209,14 +207,12 @@ function createPdfContentHtml() {
             </table>
 
             <h3 style="margin-top: 20px; color: #333;">Rincian Biaya</h3>
-            <p>Biaya per m³: <strong>${hasilPerhitunganAspal.biayaM3}</strong></p>
+            <p>Biaya per m³: <strong>${formatRupiah(biayaM3Mentah)}</strong></p>
             <p style="font-size: 1.5em; color: #dc3545; margin-top: 15px;">TOTAL BIAYA: <strong>${formatRupiah(hasilPerhitunganAspal.total)}</strong></p>
             <p style="font-size: 0.8em; margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 5px;">Perkiraan biaya ini mengasumsikan efisiensi 100% dan harga material/jasa per m³.</p>
         </div>
     `;
 }
-
-// ... (sisa kode di bawahnya tetap sama) ...
 
 function generatePDF() {
     if (!hasilPerhitunganAspal) return;
@@ -271,7 +267,7 @@ function generateCSV() {
         "Nilai"
     ].join(",");
     
-    // Data CSV (Baris). Menggunakan totalMentah untuk nilai numerik murni.
+    // Data CSV (Baris). Menggunakan nilai mentah untuk Excel.
     const dataRows = [
         ["Jenis Aspal", hasilPerhitunganAspal.jenis],
         ["Panjang (m)", hasilPerhitunganAspal.panjang],
@@ -282,7 +278,7 @@ function generateCSV() {
         ["Volume Total (m3)", hasilPerhitunganAspal.volume],
         ["Massa Total (Ton)", hasilPerhitunganAspal.massa],
         // Ambil Biaya per M3 dari perhitungan total/volume (nilai mentah)
-        ["Biaya per M3 (Rp)", (hasilPerhitunganAspal.totalMentah / hasilPerhitunganAspal.volume).toFixed(0)],
+        ["Biaya per M3 (Rp)", (hasilPerhitunganAspal.totalMentah / parseFloat(hasilPerhitunganAspal.volume)).toFixed(0)],
         ["TOTAL BIAYA", hasilPerhitunganAspal.totalMentah.toFixed(0)]
     ].map(row => row.join(",")).join("\n"); 
 
